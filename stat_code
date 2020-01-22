@@ -1,0 +1,1078 @@
+## SELECTION BIAS ##
+####################
+
+library(stargazer) # create table 
+library(plyr) # frequency count in array
+library(carData) # need to load 'car'
+library(car) # models diagnostic 
+library(gtools) # create clusters of quantiles
+library(ggplot2) # create graph 
+library(lmtest) # likelihood ratio test
+library(pltesim) # lte models
+library(splines) # splines models
+library(extrafont) # change graphic font
+library(gridExtra) # merge graphic
+library(grid) # change merge formatation 
+loadfonts()
+
+getwd()
+setwd('/home/dell/Codes/PythonScripts/ProjetoFolha')
+
+# Importing data set
+
+data = read.csv('ocupacoes.csv', row.names = 1) 
+
+attach(data)
+
+names(data)
+
+# Histograms
+
+ggplot(data, aes(x=log(pib_def))) + geom_histogram() 
+
+ggplot(data, aes(x=log(agro_def))) + geom_histogram() 
+
+## Creating variables 
+
+data$pib_log = log10(data[, c(21)])
+
+data$temp_2 = temp^2
+
+data$temp_3 = temp^3  
+
+data$temp_log = log(data[ , 23])
+
+
+
+### Descriptive Analyses
+########################## 
+
+##### Descriptive analyses table
+
+names(data)
+
+stargazer(data[,c(20,7,18,9,3,10,24,8)], type ='html', 
+          title = 'Tabela 1 - Estatísticas Descritivas',
+          digits = 1, out = 'table1.html',  
+          covariate.labels = c('Ocup. Reportadas','SP (dummy)',
+                              'Distância (km)','Abril Vermelho',
+                              'N. de Famílias','Intensidade',
+                              'Log PIB-M (x 1000)','Ano Eleitoral'),
+          omit.summary.stat = c('p25','p75'))
+
+
+##### Descriptive analyses of each variable 
+
+# UF
+
+reportado = aggregate(report ~ uf, data, sum)
+
+geral = count(data, "uf")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+## SP dummy
+
+reportado = aggregate(report ~ dummy_sp, data, sum)
+
+geral = count(data, "dummy_sp")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+## km    
+
+data$km_quant = quantcut(data$km, 5)
+
+reportado = aggregate(report ~ km_quant, data, sum)
+
+geral = count(data, "km_quant")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+## Abril Vermelho
+
+reportado = aggregate(report ~ abr_verm, data, sum)
+
+geral = count(data, "abr_verm")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+## Intensidade   
+
+data$intens_quant = quantcut(data$intens, 10)
+
+reportado = aggregate(report ~ intens_quant, data, sum)
+
+geral = count(data, "intens_quant")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+## N. de Familias   
+
+data$fam_quant = quantcut(data$fam, 5)
+
+reportado = aggregate(report ~ fam_quant, data, sum)
+
+geral = count(data, "fam_quant")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+## log(pib)   
+
+data$pib_log_quant = quantcut(data$pib_log, 5)
+
+reportado = aggregate(report ~ pib_log_quant, data, sum)
+
+geral = count(data, "pib_log_quant")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+## Ano
+
+reportado = aggregate(report ~ ano, data, sum)
+
+geral = count(data, "ano")
+
+resultado = reportado[,2] / geral[,2]
+
+resultado
+
+
+
+### PH test
+##############
+
+##### interaction test (it_variable_un/re_number) stepwise
+
+
+## dummy_sp
+
+it_sp_un_1 = glm(report ~ dummy_sp*temp + dummy_sp*temp_2 + dummy_sp*temp_3 + 
+                temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_sp_re_1 = glm(report ~ dummy_sp + temp + temp_2 + temp_3, 
+              family=binomial(link='logit'), data=data)
+
+lrtest(it_sp_un_1, it_sp_re_1)
+
+it_sp_un_2 = glm(report ~ dummy_sp*temp + dummy_sp*temp_2 + dummy_sp*temp_3 + 
+                     abr_verm + temp + temp_2 + temp_3, 
+                   family=binomial(link='logit'), data=data)
+  
+it_sp_re_2 = glm(report ~ dummy_sp + abr_verm + temp + temp_2 + temp_3, 
+                family=binomial(link='logit'), data=data)
+  
+lrtest(it_sp_un_2, it_sp_re_2)
+
+it_sp_un_3 = glm(report ~ dummy_sp*temp + dummy_sp*temp_2 + dummy_sp*temp_3 + 
+                   abr_verm + fam + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+it_sp_re_3 = glm(report ~ dummy_sp + abr_verm + fam + temp + temp_2 + temp_3, 
+              family=binomial(link='logit'), data=data)
+
+lrtest(it_sp_un_3, it_sp_re_3)
+
+it_sp_un_4 = glm(report ~ dummy_sp*temp + dummy_sp*temp_2 + dummy_sp*temp_3 + 
+                   abr_verm + fam + intens + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+it_sp_re_4 = glm(report ~ dummy_sp + abr_verm + fam + intens + temp + 
+                temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_sp_un_4, it_sp_re_4)
+
+it_sp_un_5 = glm(report ~ dummy_sp*temp + dummy_sp*temp_2 + dummy_sp*temp_3 + 
+                   abr_verm + fam + intens + pib_log + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+it_sp_re_5 = glm(report ~ dummy_sp + abr_verm + fam + intens + pib_log + 
+                temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_sp_un_5, it_sp_re_5)
+
+it_sp_un_6 = glm(report ~ dummy_sp*temp + dummy_sp*temp_2 + dummy_sp*temp_3 + 
+                   abr_verm + fam + intens + pib_log + ano_eleitoral + temp + 
+                   temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_sp_re_6 = glm(report ~ dummy_sp + abr_verm + fam + intens + pib_log + 
+                ano_eleitoral + temp + temp_2 + temp_3, 
+              family=binomial(link='logit'), data=data)
+
+lrtest(it_sp_un_6, it_sp_re_6)
+
+## km
+
+it_km_un_1 = glm(report ~ km*temp + km*temp_2 + km*temp_3 + 
+                   temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_km_re_1 = glm(report ~ km + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+lrtest(it_km_un_1, it_km_re_1)
+
+it_km_un_2 = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + temp + 
+                   temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_km_re_2 = glm(report ~ km + abr_verm + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+lrtest(it_km_un_2, it_km_re_2)
+
+it_km_un_3 = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + 
+                   temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_km_re_3 = glm(report ~ km + abr_verm + fam + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+lrtest(it_km_un_3, it_km_re_3)
+
+it_km_un_4 = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + 
+                   intens + temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_km_re_4 = glm(report ~ km + abr_verm + fam + intens + temp + temp_2 + 
+                   temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_km_un_4, it_km_re_4)
+
+it_km_un_5 = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + 
+                   intens + pib_log + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+it_km_re_5 = glm(report ~ km + abr_verm + fam + intens + pib_log + 
+                   ano_eleitoral + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+lrtest(it_km_un_5, it_km_re_5)
+
+it_km_un_6 = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + 
+                   intens + pib_log + ano_eleitoral + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+it_km_re_6 = glm(report ~ km + abr_verm + fam + intens + pib_log + ano_eleitoral + 
+                   temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_km_un_6, it_km_re_6)
+
+## abr_verm 
+
+it_abr_verm_un_1 = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                   temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_abr_verm_re_1 = glm(report ~ abr_verm + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+lrtest(it_abr_verm_un_1, it_abr_verm_re_1)
+
+it_abr_verm_un_2 = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                         km + temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_abr_verm_re_2 = glm(report ~ abr_verm + km + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+lrtest(it_abr_verm_un_2, it_abr_verm_re_2)
+
+it_abr_verm_un_3 = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                         km + fam + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+it_abr_verm_re_3 = glm(report ~ abr_verm + km + fam + temp + temp_2 + 
+                         temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_abr_verm_un_3, it_abr_verm_re_3)
+
+it_abr_verm_un_4 = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                         dummy_sp + fam + intens + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+it_abr_verm_re_4 = glm(report ~ abr_verm + dummy_sp + fam + intens + temp + 
+                         temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_abr_verm_un_4, it_abr_verm_re_4)
+
+it_abr_verm_un_5 = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                         dummy_sp + fam + intens + pib_log + temp + temp_2 + 
+                         temp_3, family=binomial(link='logit'), data=data)
+
+it_abr_verm_re_5 = glm(report ~ abr_verm + dummy_sp + fam + intens + pib_log + 
+                         temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_abr_verm_un_5, it_abr_verm_re_5)
+
+it_abr_verm_un_6 = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 +
+                         km + fam + intens + pib_log + ano_eleitoral + 
+                         temp + temp_2 + temp_3, family=binomial(link='logit'), 
+                       data=data)
+
+it_abr_verm_re_6 = glm(report ~ abr_verm + km + fam + intens + pib_log + 
+                         ano_eleitoral + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+lrtest(it_abr_verm_un_6, it_abr_verm_re_6)
+
+## fam
+
+it_fam_un_1 = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + temp + 
+                    temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_fam_re_1 = glm(report ~ fam + temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_fam_un_1, it_fam_re_1)
+
+it_fam_un_2 = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + km + 
+                    temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_fam_re_2 = glm(report ~ fam + km + temp + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+lrtest(it_fam_un_2, it_fam_re_2)
+
+it_fam_un_3 = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + km + 
+                    abr_verm + temp + temp_2 + temp_3,
+                  family=binomial(link='logit'), data=data)
+
+it_fam_re_3 = glm(report ~ fam + km + abr_verm + temp + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+lrtest(it_fam_un_3, it_fam_re_3)
+
+it_fam_un_4 = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + dummy_sp + 
+                    abr_verm  + intens + temp + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+it_fam_re_4 = glm(report ~ fam + dummy_sp + abr_verm  + intens + temp + temp_2 + 
+                    temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_fam_un_4, it_fam_re_4)
+
+it_fam_un_5 = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + km + 
+                    abr_verm + intens + pib_log + temp + temp_2 + 
+                    temp_3, family=binomial(link='logit'), data=data)
+
+it_fam_re_5 = glm(report ~ fam + km + abr_verm + intens + pib_log + temp + 
+                    temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_fam_un_5, it_fam_re_5)
+
+it_fam_un_6 = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + km + 
+                    abr_verm + intens + pib_log + ano_eleitoral + temp + 
+                    temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_fam_re_6 = glm(report ~ fam + km + abr_verm + intens + pib_log + 
+                    ano_eleitoral + temp + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+lrtest(it_fam_un_6, it_fam_re_6)
+
+## intens 
+
+it_intens_un_1 = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + temp + 
+                    temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_intens_re_1 = glm(report ~ intens + temp + temp_2 + temp_3, 
+                     family=binomial(link='logit'), data=data)
+
+lrtest(it_intens_un_1, it_intens_re_1)
+
+it_intens_un_2 = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + km + 
+                    temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_intens_re_2 = glm(report ~ intens + km + temp + temp_2 + temp_3, 
+                     family=binomial(link='logit'), data=data)
+
+lrtest(it_intens_un_2, it_intens_re_2)
+
+it_intens_un_3 = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + 
+                    km + abr_verm + temp + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+it_intens_re_3 = glm(report ~ intens + km + abr_verm + temp + temp_2 + 
+                       temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_intens_un_3, it_intens_re_3)
+
+it_intens_un_4 = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + 
+                       km + abr_verm + fam + temp + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+it_intens_re_4 = glm(report ~ intens + km + abr_verm + fam + temp + temp_2 + 
+                       temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_intens_un_4, it_intens_re_4)
+
+it_intens_un_5 = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + 
+                       km + abr_verm + fam + pib_log + temp + temp_2 + 
+                    temp_3, family=binomial(link='logit'), data=data)
+
+it_intens_re_5 = glm(report ~ intens + km + abr_verm + fam + pib_log + temp + 
+                       temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_intens_un_5, it_intens_re_5)
+
+it_intens_un_6 = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + 
+                       km + abr_verm + fam + pib_log + ano_eleitoral + 
+                       temp + temp_2 + temp_3, family=binomial(link='logit'), 
+                     data=data)
+
+it_intens_re_6 = glm(report ~ intens + km + abr_verm + fam + pib_log + 
+                       ano_eleitoral + temp + temp_2 + temp_3, 
+                     family=binomial(link='logit'), data=data)
+
+lrtest(it_intens_un_6, it_intens_re_6)
+
+## pib_log 
+
+it_pib_log_un_1 = glm(report ~ pib_log*temp + pib_log*temp_2 + pib_log*temp_3 + 
+                        temp + temp_2 + temp_3, family=binomial(link='logit'), 
+                      data=data)
+
+it_pib_log_re_1 = glm(report ~ pib_log + temp + temp_2 + temp_3, 
+                      family=binomial(link='logit'), data=data)
+
+lrtest(it_pib_log_un_1, it_pib_log_re_1)
+
+it_pib_log_un_2 = glm(report ~ pib_log*temp + pib_log*temp_2 + pib_log*temp_3 + 
+                        km + temp + temp_2 + temp_3, 
+                      family=binomial(link='logit'), data=data)
+
+it_pib_log_re_2 = glm(report ~ pib_log + km + temp + temp_2 + temp_3, 
+                      family=binomial(link='logit'), data=data)
+
+lrtest(it_pib_log_un_2, it_pib_log_re_2)
+
+it_pib_log_un_3 = glm(report ~ pib_log*temp + pib_log*temp_2 + pib_log*temp_3 + 
+                       km + abr_verm + temp + temp_2 + temp_3, 
+                     family=binomial(link='logit'), data=data)
+
+it_pib_log_re_3 = glm(report ~ pib_log + km + abr_verm + temp + temp_2 + 
+                        temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_pib_log_un_3, it_pib_log_re_3)
+
+it_pib_log_un_4 = glm(report ~ pib_log*temp + pib_log*temp_2 + pib_log*temp_3 + 
+                       km + abr_verm + fam + temp + temp_2 + temp_3, 
+                     family=binomial(link='logit'), data=data)
+
+it_pib_log_re_4 = glm(report ~ pib_log + km + abr_verm + fam + temp + temp_2 + 
+                        temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_pib_log_un_4, it_pib_log_re_4)
+
+it_pib_log_un_5 = glm(report ~ pib_log*temp + pib_log*temp_2 + pib_log*temp_3 + 
+                       km + abr_verm + fam + intens + temp + temp_2 + 
+                       temp_3, family=binomial(link='logit'), data=data)
+
+it_pib_log_re_5 = glm(report ~ pib_log + km + abr_verm + fam + intens + 
+                        temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_pib_log_un_5, it_pib_log_re_5)
+
+it_pib_log_un_6 = glm(report ~ pib_log*temp + pib_log*temp_2 + pib_log*temp_3 + 
+                        km + abr_verm + fam + intens + ano_eleitoral + 
+                       temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_pib_log_re_6 = glm(report ~ pib_log + km + abr_verm + fam + intens + 
+                        ano_eleitoral + temp + temp_2 + temp_3, 
+                      family=binomial(link='logit'), data=data)
+
+lrtest(it_pib_log_un_6, it_pib_log_re_6)
+
+## ano_eleitoral 
+
+it_ano_eleitoral_un_1 = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                              ano_eleitoral*temp_3 + temp + temp_2 + temp_3, 
+                            family=binomial(link='logit'), data=data)
+
+it_ano_eleitoral_re_1 = glm(report ~ ano_eleitoral + temp + temp_2 + temp_3, 
+                            family=binomial(link='logit'), data=data)
+
+lrtest(it_ano_eleitoral_un_1, it_ano_eleitoral_re_1)
+
+it_ano_eleitoral_un_2 = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                              ano_eleitoral*temp_3 + km + temp + temp_2 + 
+                              temp_3, family=binomial(link='logit'), data=data)
+
+it_ano_eleitoral_re_2 = glm(report ~ ano_eleitoral + km + temp + temp_2 + 
+                              temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_ano_eleitoral_un_2, it_ano_eleitoral_re_2)
+
+it_ano_eleitoral_un_3 = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                              ano_eleitoral*temp_3 + dummy_sp + abr_verm + temp + 
+                              temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+it_ano_eleitoral_re_3 = glm(report ~ ano_eleitoral + dummy_sp + abr_verm + temp + 
+                              temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+lrtest(it_ano_eleitoral_un_3, it_ano_eleitoral_re_3)
+
+it_ano_eleitoral_un_4 = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                              ano_eleitoral*temp_3 + km + abr_verm + 
+                              fam + temp + temp_2 + temp_3, family=binomial(link='logit'), 
+                            data=data)
+
+it_ano_eleitoral_re_4 = glm(report ~ ano_eleitoral + km + abr_verm + fam + 
+                              temp + temp_2 + temp_3, family=binomial(link='logit'), 
+                            data=data)
+
+lrtest(it_ano_eleitoral_un_4, it_ano_eleitoral_re_4)
+
+it_ano_eleitoral_un_5 = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                              ano_eleitoral*temp_3 + dummy_sp + abr_verm + 
+                              fam + intens + temp + temp_2 + temp_3, 
+                            family=binomial(link='logit'), data=data)
+
+it_ano_eleitoral_re_5 = glm(report ~ ano_eleitoral + dummy_sp + abr_verm + 
+                              fam + intens + temp + temp_2 + temp_3, 
+                            family=binomial(link='logit'), data=data)
+
+lrtest(it_ano_eleitoral_un_5, it_ano_eleitoral_re_5)
+
+it_ano_eleitoral_un_6 = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                              ano_eleitoral*temp_3 + km + abr_verm + 
+                              fam + intens + pib_log + temp + temp_2 + temp_3, 
+                            family=binomial(link='logit'), data=data)
+
+it_ano_eleitoral_re_6 = glm(report ~ ano_eleitoral + km + abr_verm + 
+                              fam + intens + pib_log + temp + temp_2 + temp_3, 
+                            family=binomial(link='logit'), data=data)
+
+lrtest(it_ano_eleitoral_un_6, it_ano_eleitoral_re_6)
+
+# dummy_sp - ph  
+# km - nph
+# abr_verm - nph
+# fam - nph
+# intens - nph
+# pib_log - ph
+# ano_eleitoral - nph
+
+###### Modeling 
+
+k <- c(1,4,7) # knots necessary to estimate splines models
+basis <- ns(temp,knots=k)
+
+## dummy_sp
+
+m1_sp = glm(report ~ dummy_sp + temp + temp_2 + temp_3, 
+            family=binomial(link='logit'), data=data)
+
+summary(m1_sp) # sig - pos
+
+m2_sp = glm(report ~ dummy_sp + abr_verm + temp + temp_2 + temp_3, 
+            family=binomial(link='logit'), data=data)
+
+summary(m2_sp) # sig - pos
+
+m3_sp = glm(report ~ dummy_sp + abr_verm + fam + temp + temp_2 + temp_3, 
+            family=binomial(link='logit'), data=data)
+
+summary(m3_sp) # sig - pos
+
+m4_sp = glm(report ~ dummy_sp + abr_verm + fam + intens + temp + temp_2 + 
+              temp_3, family=binomial(link='logit'), data=data)
+
+summary(m4_sp) # sig - pos
+
+m5_sp = glm(report ~ dummy_sp + abr_verm + fam + intens + pib_log + temp + temp_2 + 
+              temp_3, family=binomial(link='logit'), data=data)
+
+summary(m5_sp) # sig - pos
+
+m6_sp = glm(report ~ dummy_sp + abr_verm + fam + intens + pib_log + ano_eleitoral + 
+              temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m6_sp) # sig - pos
+
+model_sp = glm(report ~ dummy_sp + abr_verm + fam + intens + ano_eleitoral + 
+                  temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+  
+summary(model_sp) # sig - pos
+
+splines_sp = glm(report ~ dummy_sp + abr_verm + fam + intens + ano_eleitoral + 
+                 temp + temp_2 + temp_3 + basis-1, family=binomial(link='logit'), 
+                 data=data)
+
+summary(splines_sp) # sig - pos
+
+clog_sp = glm(report ~ dummy_sp + abr_verm + fam + intens + ano_eleitoral + 
+                   temp + temp_2 + temp_3 + basis-1, family=binomial(link='cloglog'), 
+                 data=data)
+
+summary(clog_sp) # sig - pos
+
+## km (the association becomes negative when intens is in the model) 
+
+m1_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + 
+              temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m1_km) # sig - pos
+
+m2_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm +
+              temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m2_km) # sig - pos
+
+m3_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + temp + 
+              temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m3_km) # sig - pos
+
+m4_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + intens + 
+              temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m4_km) # sig - neg 
+
+m5_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + intens + 
+              pib_log + temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m5_km) # sig - neg
+
+m6_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + intens + 
+              pib_log + ano_eleitoral + temp + temp_2 + temp_3, 
+            family=binomial(link='logit'), data=data)
+
+summary(m6_km) # sig - neg
+
+model_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + 
+                 intens + ano_eleitoral + temp + temp_2 + temp_3, 
+              family=binomial(link='logit'), data=data)
+
+summary(model_km) # sig - neg
+
+splines_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + intens + 
+                 ano_eleitoral + temp + temp_2 + temp_3 + basis-1, 
+               family=binomial(link='logit'), data=data)
+
+summary(splines_km) # sig - neg
+
+clog_km = glm(report ~ km*temp + km*temp_2 + km*temp_3 + abr_verm + fam + intens + 
+                   ano_eleitoral + temp + temp_2 + temp_3 + basis-1, 
+                 family=binomial(link='cloglog'), data=data)
+
+summary(clog_km) # sig - neg
+
+## abr_verm 
+
+m1_abr_verm = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+              temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m1_abr_verm) # sig - pos
+
+m2_abr_verm = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                    dummy_sp + temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m2_abr_verm) # sig - pos
+
+m3_abr_verm = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + dummy_sp + 
+                    fam + temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m3_abr_verm) # sig - pos
+
+m4_abr_verm = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                    km + fam + intens + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+summary(m4_abr_verm) # Nsig 
+
+m5_abr_verm = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                    dummy_sp + fam + intens + pib_log + temp + temp_2 + temp_3, 
+                  family=binomial(link='logit'), data=data)
+
+summary(m5_abr_verm) # Nsig
+
+m6_abr_verm = glm(report ~ abr_verm*temp + abr_verm*temp_2 + abr_verm*temp_3 + 
+                    dummy_sp + fam + intens + pib_log + ano_eleitoral + temp + 
+                    temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m6_abr_verm) # Nsig
+
+## fam 
+
+m1_fam = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + temp + temp_2 + 
+               temp_3, family=binomial(link='logit'), data=data)
+
+summary(m1_fam) # Nsig
+
+m2_fam = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + dummy_sp + 
+               temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m2_fam) # Nsig 
+
+m3_fam = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + dummy_sp + abr_verm + 
+               temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m3_fam) # Nsig
+
+m4_fam = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + dummy_sp + abr_verm + 
+               intens + temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m4_fam) # Nsig
+
+m5_fam = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + dummy_sp + abr_verm + 
+               intens + pib_log + temp + temp_2 + temp_3, 
+             family=binomial(link='logit'), data=data)
+
+summary(m5_fam) # Nsig
+
+m6_fam = glm(report ~ fam*temp + fam*temp_2 + fam*temp_3 + dummy_sp + abr_verm + 
+               intens + pib_log + ano_eleitoral + temp + temp_2 + temp_3, 
+             family=binomial(link='logit'), data=data)
+
+summary(m6_fam) # Nsig
+
+## intens
+
+m1_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + temp + 
+                  temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m1_intens) # sig - pos
+
+m2_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                  temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m2_intens) # sig - pos 
+
+m3_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                  abr_verm + temp + temp_2 + temp_3, 
+                family=binomial(link='logit'), data=data)
+
+summary(m3_intens) # sig - pos 
+
+m4_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                  abr_verm + fam + temp + temp_2 + temp_3, 
+                family=binomial(link='logit'), data=data)
+
+summary(m4_intens) # sig - pos
+
+m5_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                  abr_verm + fam + pib_log + temp + temp_2 + temp_3, 
+                family=binomial(link='logit'), data=data)
+
+summary(m5_intens) # sig - pos
+
+m6_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                  abr_verm + fam + pib_log + ano_eleitoral + temp + temp_2 + 
+                  temp_3, family=binomial(link='logit'), data=data)
+
+summary(m6_intens) # sig - pos
+
+model_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                  abr_verm + fam + ano_eleitoral + temp + temp_2 + 
+                  temp_3, family=binomial(link='logit'), data=data)
+
+summary(model_intens) # sig - pos
+
+splines_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                     abr_verm + fam + ano_eleitoral + temp + temp_2 + 
+                     temp_3 + basis-1, family=binomial(link='logit'), data=data)
+
+summary(splines_intens) # sig - pos
+
+clog_intens = glm(report ~ intens*temp + intens*temp_2 + intens*temp_3 + dummy_sp + 
+                    abr_verm + fam + ano_eleitoral + temp + temp_2 + 
+                    temp_3 + basis-1, family=binomial(link='cloglog'), data=data)
+
+summary(clog_intens) # sig - pos
+
+## pib_log
+
+m1_pib_log = glm(report ~ pib_log + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+summary(m1_pib_log) # Nsig
+
+m2_pib_log = glm(report ~ pib_log + dummy_sp + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+summary(m2_pib_log) # Nsig
+
+m3_pib_log = glm(report ~ pib_log + dummy_sp + abr_verm + temp + temp_2 + temp_3, 
+                 family=binomial(link='logit'), data=data)
+
+summary(m3_pib_log) # Nsig
+
+m4_pib_log = glm(report ~ pib_log + dummy_sp + abr_verm + fam + temp + temp_2 +
+                   temp_3, family=binomial(link='logit'), data=data)
+
+summary(m4_pib_log) # Nsig
+
+m5_pib_log = glm(report ~ pib_log + dummy_sp + abr_verm + fam + intens + temp + 
+                   temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m5_pib_log) # Nsig
+
+m6_pib_log = glm(report ~ pib_log + dummy_sp + abr_verm + fam + intens + ano_eleitoral + 
+              temp + temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m6_pib_log) # Nsig
+
+## ano_eleitoral
+
+m1_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                         ano_eleitoral*temp_3 + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+summary(m1_ano_eleitoral) # sig - neg
+
+m2_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                         ano_eleitoral*temp_3 + dummy_sp + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+summary(m2_ano_eleitoral) # sig - neg
+
+m3_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                         ano_eleitoral*temp_3 + dummy_sp + abr_verm + temp + 
+                         temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m3_ano_eleitoral) # sig - neg
+
+m4_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                         ano_eleitoral*temp_3 + dummy_sp + abr_verm + fam + temp + 
+                         temp_2 + temp_3, family=binomial(link='logit'), data=data)
+
+summary(m4_ano_eleitoral) # sig - neg
+
+m5_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                         ano_eleitoral*temp_3 + dummy_sp + abr_verm + fam + 
+                         intens + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+summary(m5_ano_eleitoral) # sig - neg
+
+m6_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                         ano_eleitoral*temp_3 + dummy_sp + abr_verm + fam + 
+                         intens + pib_log + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+summary(m6_ano_eleitoral) # sig - neg
+
+model_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                         ano_eleitoral*temp_3 + dummy_sp + abr_verm + fam + 
+                         intens + temp + temp_2 + temp_3, 
+                       family=binomial(link='logit'), data=data)
+
+summary(model_ano_eleitoral) # sig - neg
+
+splines_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                            ano_eleitoral*temp_3 + dummy_sp + abr_verm + fam + 
+                            intens + temp + temp_2 + temp_3 + basis-1, 
+                          family=binomial(link='logit'), data=data)
+
+summary(splines_ano_eleitoral) # sig - neg
+
+clog_ano_eleitoral = glm(report ~ ano_eleitoral*temp + ano_eleitoral*temp_2 + 
+                              ano_eleitoral*temp_3 + dummy_sp + abr_verm + fam + 
+                              intens + temp + temp_2 + temp_3 + basis-1, 
+                            family=binomial(link='cloglog'), data=data)
+
+summary(clog_ano_eleitoral) # sig - neg
+
+##### Interpreting coefficients
+
+tempseq = 0:max(temp)
+
+## dummy_sp
+
+# SP
+newX = cbind(1, 1, 142, 0, tempseq, tempseq^2, tempseq^3)
+Bhat = model_sp$coefficients
+XBhat = newX%*%Bhat[c(1,2,4,5,7,8,9)]
+prob_sp = 1/(1+exp(-XBhat))
+
+# NSP
+newX = cbind(1, 0, 142, 0, tempseq, tempseq^2, tempseq^3)
+Bhat = model_sp$coefficients
+XBhat = newX%*%Bhat[c(1,2,4,5,7,8,9)]
+prob_nsp = 1/(1+exp(-XBhat))
+
+prob = c(prob_sp, prob_nsp)
+sp = rep.int('sp',17)
+nsp = rep.int('nsp',17) 
+uf = c(sp, nsp)
+tempseq_2 = c(tempseq, tempseq)  
+line_type = c('sp'='solid','nsp'='dashed')
+legend = c('SP','Outros \nestados')
+legend_order = c('sp','nsp')
+
+data_sp = data.frame(prob, uf, tempseq_2)
+
+graph_sp = ggplot(data_sp, aes(x=tempseq_2, y=prob, group=uf)) +
+  geom_line(aes(linetype=uf)) +
+  scale_linetype_manual(name='', breaks=legend_order, 
+                        values=line_type, labels=legend) +
+  labs(x='t', y='Pr(Y=1|'~X[1]~'t)', title= 'Gráfico 8 - Pr(Y=1) de acordo com SP-Ano') +
+  theme_bw() +
+  theme(plot.title=element_text(hjust=0.5), text=element_text(family='Times New Roman', size=12))
+
+## km 
+
+# aprox. São Bernardo do Campo - SP
+newX = cbind(1, 22, tempseq, tempseq^2, tempseq^3, 142, 0)
+Bhat = model_km$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,7,8)]
+prob_22 = 1/(1+exp(-XBhat))
+
+# aprox. Betim - MG
+newX = cbind(1, 550, tempseq, tempseq^2, tempseq^3, 142, 0)
+Bhat = model_km$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,7,8)]
+prob_550 = 1/(1+exp(-XBhat))
+
+# aprox. Itambé - BA
+newX = cbind(1, 1500, tempseq, tempseq^2, tempseq^3, 142, 0)
+Bhat = model_km$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,7,8)]
+prob_1500 = 1/(1+exp(-XBhat))
+
+# aprox. Lajedo - PE
+newX = cbind(1, 2450, tempseq, tempseq^2, tempseq^3, 142, 0)
+Bhat = model_km$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,7,8)]
+prob_2450 = 1/(1+exp(-XBhat))
+
+# aprox. Mucajaí - RR
+newX = cbind(1, 4600, tempseq, tempseq^2, tempseq^3, 142, 0)
+Bhat = model_km$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,7,8)]
+prob_4600 = 1/(1+exp(-XBhat))
+
+prob = c(prob_22, prob_550, prob_1500, prob_2450, prob_4600)
+
+km_22 = rep.int('22', 17)
+km_550 = rep.int('550', 17)
+km_1500 = rep.int('1500', 17)
+km_2450 = rep.int('2450', 17)
+km_4600 = rep.int('4600', 17)
+km = c(km_22, km_550, km_1500, km_2450, km_4600)
+
+tempseq_5 = c(tempseq, tempseq, tempseq, tempseq, tempseq)
+
+type_line = c('22'='solid','550'='dotted','1500'='dashed','2450'='dotdash','4600'='longdash')
+legend = c('22 km','550 km','1500 km','2450 km','4600 km')
+legend_order = c('22','550','1500','2450','4600')
+
+data_km = data.frame(prob, km, tempseq_5)
+
+graph_km = ggplot(data_km, aes(x=tempseq_5, y=prob, group=km)) +
+  geom_line(aes(linetype=km)) +
+  scale_linetype_manual(name='', breaks=legend_order, 
+                        values=type_line, labels=legend) +
+  labs(x='t', y='Pr(Y=1|'~X[2]~'t)', title= 'Gráfico 9 - Pr(Y=1) de acordo com Km-Ano') +
+  theme_bw() +
+  theme(plot.title=element_text(hjust=0.5), text=element_text(family='Times New Roman', size=12))
+
+## intens 
+
+# 2
+newX = cbind(1, 2, tempseq, tempseq^2, tempseq^3, 142)
+Bhat = model_intens$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,8)]
+prob_2 = 1/(1+exp(-XBhat))
+
+# 20
+newX = cbind(1, 20, tempseq, tempseq^2, tempseq^3, 142)
+Bhat = model_intens$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,8)]
+prob_20 = 1/(1+exp(-XBhat))
+
+# 83
+newX = cbind(1, 83, tempseq, tempseq^2, tempseq^3, 142)
+Bhat = model_intens$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,8)]
+prob_83 = 1/(1+exp(-XBhat))
+
+prob = c(prob_2, prob_20, prob_83)
+
+intens_2 = rep.int('2', 17)
+intens_20 = rep.int('20', 17)
+intens_83 = rep.int('83', 17)
+intens = c(intens_2, intens_20, intens_83)
+
+tempseq_3 = c(tempseq, tempseq, tempseq)
+
+type_line = c('2'='solid','20'='dotted','83'='dashed')
+legend = c('Intens. 2','Intens. 20','Intens. 83')
+legend_order = c('2','20','83')
+
+data_intens = data.frame(prob, intens, tempseq_3)
+
+graph_intens = ggplot(data_intens, aes(x=tempseq_3, y=prob, group=intens)) +
+  geom_line(aes(linetype=intens)) +
+  scale_linetype_manual(name='', breaks=legend_order, 
+                        values=type_line, labels=legend) +
+  labs(x='t', y='Pr(Y=1|'~X[5]~'t)', title= 'Gráfico 10 - Pr(Y=1) de acordo com Intensidade-Ano') +
+  theme_bw() +
+  theme(plot.title=element_text(hjust=0.5), text=element_text(family='Times New Roman', size=12))
+
+
+# ano_eleitoral
+
+# eleitoral
+newX = cbind(1, 1, tempseq, tempseq^2, tempseq^3, 142)
+Bhat = model_ano_eleitoral$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,8)]
+prob_eleitoral = 1/(1+exp(-XBhat))
+
+# N eleitoral
+newX = cbind(1, 0, tempseq, tempseq^2, tempseq^3, 142)
+Bhat = model_ano_eleitoral$coefficients
+XBhat = newX%*%Bhat[c(1,2,3,4,5,8)]
+prob_N_eleitoral = 1/(1+exp(-XBhat))
+
+prob = c(prob_eleitoral, prob_N_eleitoral)
+
+eleitoral = rep.int('eleitoral',17)
+N_eleitoral = rep.int('N_eleitoral',17) 
+NA_eleitoral = rep.int('NA',17) 
+ano_eleitoral = c(eleitoral, N_eleitoral)
+ano_eleitoral[c(1,2,4,5,6,8,9,10,12,13,14,16,17,20,24,28,32)] = NA_eleitoral
+
+tempseq_2 = c(tempseq, tempseq)  
+
+point_type = c('eleitoral'=1,'N_eleitoral'=19, 'NA'=32)
+legend = c('Ano eleitoral','Ano não eleitoral')
+legend_order = c('eleitoral','N_eleitoral')
+
+data_eleitoral = data.frame(prob, ano_eleitoral, tempseq_2)
+
+graph_eleitoral = ggplot(data_eleitoral, aes(x=tempseq_2, y=prob, group=ano_eleitoral)) +
+  geom_point(aes(shape=ano_eleitoral), size=3) +
+  scale_shape_manual(name='', breaks=legend_order, 
+                        values=point_type, labels=legend) +
+  labs(x='t', y='Pr(Y=1|'~X[7]~'t)', title= 'Gráfico 11 - Pr(Y=1) de acordo com Ano Eleitoral') +
+  theme_bw() +
+  theme(plot.title=element_text(hjust=0.5), text=element_text(family='Times New Roman', size=12))
+  
+##### Merging graphs
+
+grid.arrange(graph_sp, graph_km, graph_intens, graph_eleitoral,
+             top=textGrob('Figura 1 - Gráficos com as prob. das ocup. serem cobertas pela FSP de acordo com as variáveis-anos \n', 
+                          gp=gpar(fontsize=15, fontface='bold', 
+                                  fontfamily='Times New Roman')))
+
+
+##### Creating table of first five rows
+
+stargazer(data[c(1:6, 3130:3135, 6293:6298),c(1,2,3,4,5,6,7,8,9,10,18,20,24)], type='html', title='Base Geral', summary = FALSE, rownames = TRUE, 
+          out='table_data.html')
+
+##### Creating results table
+
+stargazer(model_sp, model_km, model_intens, model_ano_eleitoral, type='html', 
+          title='Regressão Logística t,t²,t³', dep.var.labels='Ocup. Reportadas',
+          digits=3, out='table_results.html', single.row=TRUE)
